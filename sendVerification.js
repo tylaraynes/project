@@ -3,7 +3,7 @@ const handlebars = require("handlebars");
 const fs = require("fs");
 const path = require("path");
 
-const sendVerification = async (email, link) => {
+const sendEmail = async (email, link) => {
 
   let transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -18,7 +18,7 @@ const sendVerification = async (email, link) => {
     from: 'nutritionapp7@gmail.com',
     to: email,
     subject: 'Email Verification',
-    text: 'This is your email verification link: http://' + link,
+    text: 'This is your email verification link: ' + link,
   };
   
   transporter.sendMail(mailOptions, function(error, info){
@@ -30,4 +30,4 @@ const sendVerification = async (email, link) => {
   }); 
 };
 
-module.exports = sendVerification;
+module.exports = sendEmail;

@@ -100,7 +100,7 @@ exports.setApp = function(app, client) {
       const newToken ={userId: email, token: hash,createdAt: new Date(creation), expireAt: new Date(expiration)}
       const result = await db.collection('Tokens').insertOne(newToken);
     
-      const link = `${process.env.CLIENT_URL}/emailAuthorization?token=${resetToken}&id=${email}`;
+      const link = `${process.env.CLIENT_URL}emailAuthorization?token=${resetToken}&id=${email}`;
     
       sendVerification(email, link);
       ret = { error: 'email sent', link: link};
@@ -130,10 +130,59 @@ exports.setApp = function(app, client) {
     const newToken ={userId: email, token: hash,createdAt: new Date(creation), expireAt: new Date(expiration)}
     const result = await db.collection('Tokens').insertOne(newToken);
   
-    const link = `${process.env.CLIENT_URL}/passwordReset?token=${resetToken}&id=${email}`;
+    const link = `${process.env.CLIENT_URL}passwordReset?token=${resetToken}&id=${email}`;
   
     sendEmail(email, link);
     var ret = { error: 'email sent', link: link};
+    res.status(200).json(ret);
+  });
+
+  app.post('/api/deleteUserFood', async (req, res, next) =>
+  {
+    // incoming: int userId, string foodName, int calories
+    // outgoing: error
+    
+    //const { userId, foodName, calories } = req.body;
+    const token = require('./createJWT.js');
+    const {foodName, jwtToken, year, day, month} = req.body;
+  
+    try{
+      if(token.isExpired(jwtToken))
+      {
+        console.log('token expired')
+        var r = {error: 'The JWT is no longer valid', jwtToken: ''};
+        res.status(200).json(r); 
+        return
+      }
+    }
+    catch(e)
+    {
+      console.log(e.message);
+    }
+    
+    var error = 'notDeleted';
+  
+    try
+    {
+      const db = client.db("database");
+      const result = db.collection('Meals').deleteOne({Email: jwtToken.Email, Foodname: foodName, Year: year, Month : month, Day : day});
+      error = 'deleted';
+    }
+    catch(e)
+    {
+      error = e.toString();
+    }
+  
+    var refreshedToken = null;
+    try{
+      refreshedToken = token.refresh(jwtToken);
+    }
+    catch(e)
+    {
+      console.log(e.message);
+    }
+  
+    var ret = { error: error, jwtToken: refreshedToken};
     res.status(200).json(ret);
   });
 
@@ -145,7 +194,7 @@ app.post('/api/addUserFood', async (req, res, next) =>
   //const { userId, foodName, calories } = req.body;
   const token = require('./createJWT.js');
   const {foodName, calories, fats, carbohydrates, protein, servingSize, numServings, jwtToken} = req.body;
-
+  console.log(jwtToken.Email)
   try{
     if(token.isExpired(jwtToken))
     {
@@ -254,7 +303,8 @@ app.post('/api/register', async (req, res, next) =>
         error = 'exists';
     }
     else{
-      const newUser = {Email: email, Password: password, EmailAuth: false};
+      const hash = await bcrypt.hash(password, Number(process.env.BCRYPT_SALT));//
+      const newUser = {Email: email, Password: hash, EmailAuth: false};
       const insert = await db.collection('Users').insertOne(newUser);
       error = 'created';
     }
